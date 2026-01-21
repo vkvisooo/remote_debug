@@ -1,0 +1,178 @@
+# remote-debug-tool.spec.yaml
+
+project: Remote Smart TV & Web Debugging
+environment: development
+
+components:
+  - name: Debug Agent (TV / Web)
+    language: JavaScript
+    framework: Vanilla JS / optional framework
+    buildTool: Vite
+    responsibilities:
+      - Hook into:
+          - Network (fetch/XHR)
+          - Console (log/warn/error)
+          - Errors (window.onerror / window.onunhandledrejection)
+          - Player lifecycle events (capability, startup, buffer)
+          - Custom metrics
+      - Execute arbitrary JavaScript commands safely (using Function constructor)
+      - Send events + command responses over WebSocket
+      - Maintain single connection per device
+      - Filter network requests (exclude /beacon, /records, /collect)
+    deviceIdResolution:
+      priority:
+        - window.__REMOTE_DEBUG_DEVICE_ID__ (if set explicitly)
+        - localStorage.getItem("CPID") (primary device identifier from app)
+        - localStorage.getItem("remoteDebugDeviceId") (fallback persistent ID)
+        - Generated `device-${Date.now()}` (new device, stored in localStorage)
+      persistence:
+        - If "CPID" exists, use it (highest priority after explicit window var)
+        - If "CPID" doesn't exist, check/use "remoteDebugDeviceId"
+        - If neither exists, generate new ID and store in "remoteDebugDeviceId"
+        - DeviceId persists across page reloads via localStorage
+        - DeviceId updates automatically when localStorage values change
+    build:
+      command: "vite build --config vite.agent.config.js"
+      outputDir: "dist/agent"
+
+  - name: Debug Server (Cloud)
+    language: JavaScript
+    framework: Express.js
+    buildTool: Node.js / npm / Yarn
+    responsibilities:
+      - Maintain WebSocket connections per device
+      - Route commands from Web UI → Agent → response
+      - Route events from Agent → Web UI (tagged with deviceId)
+      - Global session management:
+          maxSessions: 5
+          deletionPriority:
+            - oldestSuccessfulSessions
+            - oldestErrorSessions
+      - Session data:
+          - sessionId (internal tracking)
+          - deviceId (primary identifier for events)
+          - status: success / error
+          - timestamp
+          - metrics/events
+      - Enforce one session per deviceId (reuse existing session on reconnect)
+      - Optional: queue commands/events on disconnect
+    build:
+      command: "node build-server.js"
+      outputDir: "dist/server"
+
+  - name: Debug Web UI
+    language: JavaScript
+    framework: React
+    buildTool: Vite
+    responsibilities:
+      - Display:
+          - Network Tab
+          - Console Tab
+          - Errors Tab (with file, line, column, function info)
+          - Playback Tab with timeline
+          - Metrics tab
+      - Command Input Box:
+          - Sends arbitrary JavaScript commands to Agent via Server
+          - Receives results / errors
+      - Device selection by deviceId (not sessionId)
+      - Event storage and filtering by deviceId
+      - Visualize bidirectional flow
+      - Real-time updates per selected device
+    build:
+      command: "vite build --config vite.webui.config.js"
+      outputDir: "dist/webui"
+
+communication:
+  protocol: WebSocket (wss://)
+  messageFormat:
+    type: command | response | event
+    sessionId: string (internal server tracking)
+    deviceId: string (primary identifier for event routing and storage)
+    payload: object
+  deviceId:
+    source: Agent determines deviceId on initialization
+    priority:
+      - window.__REMOTE_DEBUG_DEVICE_ID__ (explicit override)
+      - localStorage.getItem("CPID") (app-specific identifier)
+      - localStorage.getItem("remoteDebugDeviceId") (persistent debug ID)
+      - Generated if none exist
+    persistence: Stored in localStorage, persists across page reloads
+    updateBehavior: Automatically checks localStorage on each initialization, updates deviceId if values change
+  heartbeat:
+    interval: 30s
+    action: disconnect/reconnect if heartbeat fails
+  eventRouting:
+    - Events are stored and filtered by deviceId in WebUI
+    - Each device's events are isolated and displayed separately
+    - Switching devices shows only that device's events
+
+sessionManagement:
+  maxSessionsGlobal: 5
+  perDeviceSingleConnection: true
+  oneSessionPerDevice: true
+  deletionPolicy:
+    - Delete oldest successful session first
+    - If still > max, delete oldest error session
+  notes:
+    - One session per deviceId (reuse existing session on reconnect)
+    - New sessions created only for new deviceIds
+    - Error sessions preserved longer for debugging
+    - Limit applies globally, across devices
+    - Events are mapped and stored by deviceId, not sessionId
+
+commandExecution:
+  type: arbitrary JavaScript expressions
+  safety: Function constructor with try-catch
+  examples:
+    - window.SPN_PLAYER_OBJ.play()
+    - window[key][key][flag]
+    - window[key][key][method]()
+    - Nested property access and method calls supported
+  errorHandling:
+    - Command execution errors sent as errorEvent
+    - Includes file, line, column, function info from stack trace
+
+telemetryEvents:
+  - networkEvent:
+      fields: url, method, status, duration, phase(manifest/license/segment)
+      filters: exclude /beacon, /records, /collect URLs
+  - consoleEvent:
+      fields: message, type(log/warn/error)
+      batching: high-frequency logs batched (100ms delay)
+  - errorEvent:
+      fields: message, stack, fatal, fileName, line, column, function
+      sources: window.onerror, window.onunhandledrejection, ServiceWorker errors, command execution errors
+  - playbackEvent:
+      fields: state(started/stalled/ended), bufferLevel, DRMStatus
+  - metricEvent:
+      fields: customName, value, timestamp
+      throttling: bufferLevel throttled to 500ms
+
+security:
+  authentication: Cors, basic auth, token-based, etc.
+  authorization: no command whitelist (arbitrary JS execution)
+  encryption: TLS (wss://)
+  logging: all commands/events logged
+  networkFiltering: exclude analytics/telemetry URLs (/beacon, /records, /collect)
+
+developmentNotes:
+  - All devices use **single WebSocket connection per device**
+  - Events are **mapped and stored by deviceId** (not sessionId)
+  - WebUI displays events filtered by selected deviceId
+  - DeviceId Resolution:
+      - Agent checks deviceId on each initialization with priority:
+      - window.__REMOTE_DEBUG_DEVICE_ID__ (explicit override)
+      - localStorage.getItem("CPID") (app-specific device identifier)
+      - localStorage.getItem("remoteDebugDeviceId") (fallback persistent ID)
+      - Generated new ID if none exist (stored in "remoteDebugDeviceId")
+      - DeviceId persists across page reloads via localStorage
+      - DeviceId automatically updates when localStorage values change on page reload
+  - Maintain **low bandwidth**:
+      - throttle frequent metrics (bufferLevel every 500ms)
+      - batch console logs if high frequency (100ms delay)
+      - filter analytics/telemetry network requests
+  - Error sessions preserved longer for RCA
+  - Server supports **multi-device but global maxSessions=5**
+  - One session per deviceId (reuse on reconnect)
+  - Each app (Agent, Server, Web UI) has **separate build pipeline**
+  - Agent uses UMD, IIFE build format for immediate execution in browser

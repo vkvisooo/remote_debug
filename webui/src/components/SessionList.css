@@ -1,0 +1,102 @@
+.session-list {
+    padding: 1rem;
+}
+
+.session-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.session-list-header h3 {
+    font-size: 1rem;
+    color: #fff;
+}
+
+.session-count {
+    background: #3a3a3a;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: #aaa;
+}
+
+.session-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.no-sessions {
+    padding: 2rem;
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.session-item {
+    padding: 0.75rem;
+    background: #2a2a2a;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+}
+
+.session-item:hover {
+    background: #333;
+    border-color: #444;
+}
+
+.session-item.selected {
+    background: #1a3a2a;
+    border-color: #4caf50;
+}
+
+.session-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.session-status {
+    min-width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.session-device-id {
+    font-weight: 600;
+    color: #fff;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+
+.session-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.session-id {
+    font-size: 0.75rem;
+    color: #888;
+    font-family: monospace;
+}
+
+.session-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.error-count {
+    color: #f44336;
+}
+
+.session-time {
+    color: #888;
+}

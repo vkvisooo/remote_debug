@@ -1,0 +1,88 @@
+.playback-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.playback-empty-message {
+    color: #666;
+    font-size: 0.85rem;
+    font-style: italic;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+.playback-two-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.playback-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.playback-column-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #3a3a3a;
+}
+
+.playback-device-column .playback-column-title {
+    color: #2196f3;
+}
+
+.playback-player-column .playback-column-title {
+    color: #4caf50;
+}
+
+.playback-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.playback-detail-item {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #2a2a2a;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.playback-detail-item:last-child {
+    border-bottom: none;
+}
+
+.playback-detail-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    flex-direction: column;
+}
+
+.playback-detail-value {
+    font-size: 0.9rem;
+    color: #ccc;
+    word-break: break-word;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    padding: 0.25rem 0;
+}
+.playback-detail-label-value {
+    font-weight: 500;
+    color: #666;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .playback-two-columns {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}

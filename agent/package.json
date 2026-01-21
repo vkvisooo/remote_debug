@@ -1,0 +1,16 @@
+{
+  "name": "@remote-debug/agent",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Debug Agent for TV/Web applications",
+  "main": "dist/agent/index.js",
+  "scripts": {
+    "dev": "vite build --config vite.agent.config.js --watch",
+    "build": "vite build --config vite.agent.config.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vite": "5.0.0"
+  }
+}
+

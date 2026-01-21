@@ -1,0 +1,183 @@
+.command-input {
+    padding: 1rem;
+    background: #2a2a2a;
+    border-top: 1px solid #3a3a3a;
+}
+
+.command-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.command-select {
+    padding: 0.5rem;
+    background: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    color: #fff;
+    border-radius: 4px;
+    min-width: 180px;
+}
+
+.command-field {
+    flex: 1;
+    padding: 0.5rem;
+    background: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    color: #fff;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.params-field {
+    flex: 1;
+    padding: 0.5rem;
+    background: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    color: #fff;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.send-button {
+    padding: 0.5rem 1.5rem;
+    background: #4caf50;
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.send-button:hover {
+    background: #45a049;
+}
+
+.command-hint {
+    font-size: 0.75rem;
+    color: #666;
+    font-family: monospace;
+}
+
+.command-responses {
+    margin-top: 1rem;
+    border-top: 1px solid #3a3a3a;
+    padding-top: 1rem;
+}
+
+.command-responses-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.command-responses-header h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.clear-responses-button {
+    padding: 0.25rem 0.75rem;
+    background: #666;
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.2s;
+}
+
+.clear-responses-button:hover {
+    background: #777;
+}
+
+.command-responses-list {
+    max-height: 300px;
+    overflow-y: auto;
+    background: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    border-radius: 4px;
+    padding: 0.5rem;
+}
+
+.command-response {
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    border-left: 3px solid #4caf50;
+    background: #222;
+    border-radius: 2px;
+    font-family: monospace;
+    font-size: 0.875rem;
+}
+
+.command-response.response-error {
+    border-left-color: #f44336;
+}
+
+.response-time {
+    color: #666;
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+
+.response-content {
+    color: #fff;
+}
+
+.response-pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: #fff;
+    background: #1a1a1a;
+    padding: 0.5rem;
+    border-radius: 2px;
+    border: 1px solid #3a3a3a;
+    overflow-x: auto;
+}
+
+.response-value {
+    color: #fff;
+}
+
+.response-value.response-string {
+    color: #4caf50;
+}
+
+.response-value.response-number {
+    color: #2196f3;
+}
+
+.response-value.response-boolean {
+    color: #ff9800;
+}
+
+.response-value.response-null {
+    color: #9e9e9e;
+    font-style: italic;
+}
+
+.response-value.response-undefined {
+    color: #9e9e9e;
+    font-style: italic;
+}
+
+.response-value.response-error {
+    color: #f44336;
+}
+
+.response-stack {
+    margin-top: 0.5rem;
+    color: #f44336;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #1a1a1a;
+    padding: 0.5rem;
+    border-radius: 2px;
+    border: 1px solid #3a3a3a;
+}

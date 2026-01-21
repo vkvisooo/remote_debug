@@ -1,0 +1,21 @@
+{
+  "name": "@remote-debug/server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Debug Server for managing WebSocket connections",
+  "main": "dist/server/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "build": "node build-server.js",
+    "start": "node dist/server/index.js"
+  },
+  "dependencies": {
+    "express": "4.18.2",
+    "ws": "1.1.5",
+    "cors": "2.8.5"
+  },
+  "devDependencies": {
+    "@types/node": "20.0.0"
+  }
+}
+

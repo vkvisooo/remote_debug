@@ -1,0 +1,24 @@
+{
+  "name": "remote-debug-tool",
+  "version": "1.0.0",
+  "description": "Remote Smart TV & Web Debugging Tool",
+  "private": true,
+  "workspaces": [
+    "agent",
+    "server",
+    "webui"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "build:agent": "npm run build --workspace=agent",
+    "build:server": "npm run build --workspace=server",
+    "build:webui": "npm run build --workspace=webui",
+    "dev:agent": "npm run dev --workspace=agent",
+    "dev:server": "npm run dev --workspace=server",
+    "dev:webui": "npm run dev --workspace=webui"
+  },
+  "devDependencies": {
+    "concurrently": "8.2.2"
+  }
+}
+
