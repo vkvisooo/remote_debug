@@ -7,7 +7,7 @@ export const NETWORK_CONFIG = {
   FILTERS: [
     '/beacon',
     '/records',
-    '/collect'
+    '/collect',
   ],
   PHASES: {
     MANIFEST: 'manifest',
@@ -18,8 +18,8 @@ export const NETWORK_CONFIG = {
   },
   PHASE_KEYWORDS: {
     MANIFEST: ['manifest', '.m3u8', '.mpd'],
-    LICENSE: ['license', 'drm'],
-    SEGMENT: ['segment', '.ts', '.m4s']
+    LICENSE: ['license', 'expressplaytoken='],
+    SEGMENT: ['segment', '.ts', '.m4s', '.mp4']
   }
 };
 
@@ -52,6 +52,8 @@ export const WS_CONFIG = {
   },
   QUERY_PARAMS: {
     DEVICE_ID: 'deviceId',
+    DEVICE_NAME: 'deviceName',
+    MODEL_NAME: 'modelName',
     TYPE: 'type'
   },
   CLIENT_TYPE: 'device',
@@ -69,7 +71,8 @@ export const MESSAGE_TYPES = {
   COMMAND: 'command',
   RESPONSE: 'response',
   EVENT: 'event',
-  HEARTBEAT: 'heartbeat'
+  HEARTBEAT: 'heartbeat',
+  DEVICE_INFO: 'deviceInfo'
 };
 
 // Event Types
@@ -97,6 +100,7 @@ export const DEVICE_ID_CONFIG = {
 // Server URL Configuration
 export const SERVER_URL_CONFIG = {
   WINDOW_VAR: '__REMOTE_DEBUG_SERVER_URL__',
+  // DEFAULT : 'wss://ws.apni-duniya.com'
   DEFAULT: 'ws://localhost:3001'
 };
 

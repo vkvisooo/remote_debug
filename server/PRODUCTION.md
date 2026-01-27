@@ -65,7 +65,7 @@ Use PM2 or similar for:
 
 ```bash
 npm install -g pm2
-pm2 start dist/server/index.js --name remote-debug-server
+pm2 start dist/server/index.js --name debug-server
 pm2 save
 pm2 startup
 ```
@@ -140,14 +140,14 @@ Use PM2 for automatic restart and management:
 npm install -g pm2
 
 # Start with PM2
-pm2 start dist/server/index.js --name remote-debug-server
+pm2 start dist/server/index.js --name debug-server
 
 # PM2 will automatically restart if server crashes
 # PM2 commands:
-pm2 restart remote-debug-server  # Restart manually
-pm2 stop remote-debug-server     # Stop server
-pm2 start remote-debug-server    # Start server
-pm2 logs remote-debug-server     # View logs
+pm2 restart debug-server  # Restart manually
+pm2 stop debug-server     # Stop server
+pm2 start debug-server    # Start server
+pm2 logs debug-server     # View logs
 pm2 status                       # Check status
 
 # Save PM2 configuration

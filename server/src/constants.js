@@ -33,7 +33,9 @@ export const WS_CONFIG = {
   },
   QUERY_PARAMS: {
     TYPE: 'type',
-    DEVICE_ID: 'deviceId'
+    DEVICE_ID: 'deviceId',
+    DEVICE_NAME: 'deviceName',
+    MODEL_NAME: 'modelName',
   },
   CLIENT_TYPES: {
     DEVICE: 'device',
@@ -53,7 +55,8 @@ export const MESSAGE_TYPES = {
   RESPONSE: 'response',
   COMMAND: 'command',
   HEARTBEAT: 'heartbeat',
-  ERROR: 'error'
+  ERROR: 'error',
+  DEVICE_INFO: 'deviceInfo'
 };
 
 // Event Types
@@ -77,7 +80,9 @@ export const SERVER_CONFIG = {
 export const API_ROUTES = {
   SESSIONS: '/api/sessions',
   SESSION_BY_ID: '/api/sessions/:deviceId',
-  HEALTH: '/health'
+  DEVICE_DETAILS: '/api/devices/:deviceId',
+  HEALTH: '/health',
+  AUTH_LOGIN: '/api/auth/login'
 };
 
 

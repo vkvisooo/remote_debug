@@ -3,6 +3,7 @@
  * Hooks into network, console, errors, and player lifecycle events
  * Communicates with Debug Server via WebSocket
  */
+import "regenerator-runtime/runtime";
 
 import {
   NETWORK_CONFIG,
@@ -35,7 +36,8 @@ import {
   createInitialPlayerState,
   shouldThrottleBufferLevel,
   getReconnectDelay,
-  getSecurityLevelAndSupported
+  getSecurityLevelAndSupported,
+  getDeviceInfo
 } from './helpers.js';
 
 class RemoteDebugAgent {
@@ -77,7 +79,6 @@ class RemoteDebugAgent {
       this.hookNetwork();
       this.hookConsole();
       this.hookErrors();
-      this.hookPlayback();
       this.connect();
     } catch (error) {
       console.error('[RemoteDebug] Failed to initialize:', error);
@@ -130,6 +131,8 @@ class RemoteDebugAgent {
         console.log(`[Agent] WebSocket connection opened successfully for device: ${this.deviceId}`);
         this.reconnectAttempts = 0;
         this.startHeartbeat();
+        // Send device info when connection opens
+        this.sendDeviceInfo();
         // Send any pending events that were queued before connection
         if (this.pendingEvents && this.pendingEvents.length > 0) {
           this.pendingEvents.forEach(({ eventType, eventData }) => {
@@ -169,7 +172,9 @@ class RemoteDebugAgent {
     if (message.type === MESSAGE_TYPES.COMMAND) {
       this.handleCommand(message);
     } else if (message.type === MESSAGE_TYPES.HEARTBEAT) {
-      this.sendHeartbeat();
+      // Server sent heartbeat - just acknowledge, don't echo back immediately
+      // The interval will send heartbeats at the configured interval
+      // This prevents heartbeat loops
     } else if (message.type === MESSAGE_TYPES.SESSION) {
       // Session is ready - send any pending events
       if (this.pendingEvents && this.pendingEvents.length > 0) {
@@ -241,6 +246,24 @@ class RemoteDebugAgent {
         stack: error.stack
       });
     }
+  }
+  
+  /**
+   * Send device info to server
+   */
+  sendDeviceInfo() {
+    const deviceInfo = getDeviceInfo();
+    getSecurityLevelAndSupported().then(results => {
+      this.sendMessage({
+        type: MESSAGE_TYPES.DEVICE_INFO,
+        deviceId: this.deviceId,
+        payload: {
+          deviceName: deviceInfo.deviceName,
+          modelName: deviceInfo.modelName,
+          drmSupport: results
+        }
+      });
+    });
   }
 
   /**
@@ -511,7 +534,6 @@ class RemoteDebugAgent {
    * Sends PLAYBACK events every 5 seconds with playerState, buffer, and readyState
    */
   startSegmentPlaybackTracking(segmentUrl) {
-    console.log('startSegmentPlaybackTracking', this.segmentPlaybackTimeout);
     if (this.segmentPlaybackTimeout) {
       return;
     }
@@ -576,6 +598,8 @@ class RemoteDebugAgent {
    * Start heartbeat
    */
   startHeartbeat() {
+    // Stop any existing heartbeat interval first to prevent multiple intervals
+    this.stopHeartbeat();
     this.heartbeatInterval = setInterval(() => {
       this.sendHeartbeat();
     }, HEARTBEAT_CONFIG.INTERVAL);

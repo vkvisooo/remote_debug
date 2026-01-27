@@ -10,6 +10,7 @@ import {
   SERIALIZATION,
   STACK_TRACE_PATTERNS
 } from './constants.js';
+import { getDeviceInfo } from './helpers.js';
 
 /**
  * Convert HTTP/HTTPS URL to WebSocket URL
@@ -37,7 +38,10 @@ export function convertToWebSocketUrl(url) {
 export function buildWebSocketUrl(wsUrl, deviceId) {
   try {
     const url = new URL(wsUrl);
+    const deviceInfo = getDeviceInfo();
     url.searchParams.set(WS_CONFIG.QUERY_PARAMS.DEVICE_ID, deviceId);
+    url.searchParams.set(WS_CONFIG.QUERY_PARAMS.DEVICE_NAME, deviceInfo.deviceName);
+    url.searchParams.set(WS_CONFIG.QUERY_PARAMS.MODEL_NAME, deviceInfo.modelName);
     url.searchParams.set(WS_CONFIG.QUERY_PARAMS.TYPE, WS_CONFIG.CLIENT_TYPE);
     return url.toString();
   } catch (urlError) {

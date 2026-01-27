@@ -53,14 +53,26 @@ export function enforceMaxSessions(sessions, deviceConnections, maxSessions) {
  * Broadcast message to all WebUI connections
  */
 export function broadcastToWebUI(webUIConnections, message) {
-  const messageStr = JSON.stringify(message);  
+  const messageStr = JSON.stringify(message);
   let sentCount = 0;
-  webUIConnections.forEach((ws, index) => {
-    if (ws.readyState === WS_CONFIG.READY_STATE.OPEN) {
-      ws.send(messageStr);
-      sentCount++;
+  
+  webUIConnections.forEach((ws) => {
+    const state = ws.readyState;
+    if (state === WS_CONFIG.READY_STATE.OPEN) {
+      try {
+        ws.send(messageStr);
+        sentCount++;
+      } catch (error) {
+        console.error(`[Server] Error sending message to WebUI connection:`, error);
+      }
+    } else {
+      // Remove closed connections from the set
+      if (state === WS_CONFIG.READY_STATE.CLOSED || state === WS_CONFIG.READY_STATE.CLOSING) {
+        webUIConnections.delete(ws);
+      }
     }
   });
+  
   
   if (sentCount > 1) {
     console.warn(`[Server] WARNING: Event sent to ${sentCount} WebUI connections - this may cause duplicates!`);
@@ -79,7 +91,10 @@ export function parseWebSocketUrl(request) {
     return {
       clientType: url.searchParams.get(WS_CONFIG.QUERY_PARAMS.TYPE),
       deviceId: url.searchParams.get(WS_CONFIG.QUERY_PARAMS.DEVICE_ID),
+      deviceName: url.searchParams.get(WS_CONFIG.QUERY_PARAMS.DEVICE_NAME),
+      modelName: url.searchParams.get(WS_CONFIG.QUERY_PARAMS.MODEL_NAME),
       sessionId: url.searchParams.get('sessionId'), // WebUI session ID
+      token: url.searchParams.get('token'), // JWT token for WebUI
       url
     };
   } catch (error) {
@@ -94,6 +109,9 @@ export function parseWebSocketUrl(request) {
 export function formatSessionForAPI(session) {
   return {
     deviceId: session.deviceId,
+    deviceName: session.deviceName || null,
+    modelName: session.modelName || null,
+    drmSupport: session.drmSupport || null,
     status: session.status,
     timestamp: session.timestamp,
     errorCount: session.errorCount,
@@ -107,6 +125,9 @@ export function formatSessionForAPI(session) {
 export function formatSessionForWebUI(session) {
   return {
     deviceId: session.deviceId,
+    deviceName: session.deviceName || null,
+    modelName: session.modelName || null,
+    drmSupport: session.drmSupport || null,
     status: session.status,
     timestamp: session.timestamp,
     errorCount: session.errorCount

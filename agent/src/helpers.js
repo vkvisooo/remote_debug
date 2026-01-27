@@ -211,18 +211,100 @@ export function getSecurityLevelAndSupported() {
     isPlayReadySupported(),
     isFairPlaySupported()
   ]).then(results => {
-    return results.map((result,index) => {
+    return results.filter((result,index) => {
+      return result?.status === 'fulfilled';
+    }).map((result,index) => {
       return { 
         name: names[index],
-        supported: result?.status === 'fulfilled',
-        securityLevel: result?.value?.getConfiguration?.()?.securityLevel || 'unknown' 
+        supported: true 
       };
     });
   }).catch(error => {
-    return [{
-      name: 'unknown',
-      supported: false,
-      securityLevel: 'unknown'
-    }];
+    return [];
   });
+}
+
+/**
+   * Get device information from browser
+   */
+export function getDeviceInfo() {
+  const ua = navigator.userAgent || '';
+  const screenInfo = screen?.width && screen?.height
+    ? `${screen.width}x${screen.height}`
+    : 'unknown';
+
+  const info = {
+    deviceName: 'unknown',
+    modelName: 'unknown',
+    screen: screenInfo,
+    ua
+  };
+
+  /* -------------------------
+     Browser
+  -------------------------- */
+  if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) info.browser = 'Safari';
+  else if (/Chrome/i.test(ua)) info.browser = 'Chrome';
+  else if (/Firefox/i.test(ua)) info.browser = 'Firefox';
+
+
+  /* -------------------------
+     Smart TVs
+  -------------------------- */
+  if (/Tizen|SMART-TV/i.test(ua)) {
+    info.deviceName = 'Smart TV';
+    info.modelName = 'Tizen';
+    const v = ua.match(/Tizen[\/\s]?(\d+(\.\d+)?)/i);
+    if (v) info.osVersion = v[1];
+  }
+
+  else if (/webOS|Web0S|LG Browser/i.test(ua)) {
+    info.deviceName = 'Smart TV';
+    info.modelName = 'webOS';
+    const v = ua.match(/webOS[\/\s]?(\d+(\.\d+)?)/i);
+    if (v) info.osVersion = v[1];
+  }
+
+  /* -------------------------
+     iOS / iPadOS
+  -------------------------- */
+  else if (/iPhone/i.test(ua)) {
+    info.deviceName = 'Mobile';
+    info.modelName = 'iOS';
+  }
+
+  else if (/iPad|Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) {
+    info.deviceName = 'Tablet';
+    info.modelName = 'iPadOS';
+  }
+
+  /* -------------------------
+     Android
+  -------------------------- */
+  else if (/Android/i.test(ua)) {
+    info.deviceName = 'Mobile';
+    info.modelName = 'Android';
+    const v = ua.match(/Android\s([0-9.]+)/);
+    if (v) info.osVersion = v[1];
+  }
+
+  /* -------------------------
+     Desktop
+  -------------------------- */
+  else if (/Macintosh/i.test(ua)) {
+    info.deviceName = 'Desktop';
+    info.modelName = 'macOS';
+  }
+
+  else if (/Windows/i.test(ua)) {
+    info.deviceName = 'Desktop';
+    info.modelName = 'Windows';
+  }
+
+  else if (/Linux/i.test(ua)) {
+    info.deviceName = 'Desktop';
+    info.modelName = 'Linux';
+  }
+  info.deviceName = `${info.deviceName} (${info.screen})`;
+  return info;
 }

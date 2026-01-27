@@ -10,12 +10,12 @@
     "start": "node dist/server/index.js"
   },
   "dependencies": {
+    "cors": "2.8.5",
     "express": "4.18.2",
-    "ws": "1.1.5",
-    "cors": "2.8.5"
+    "jsonwebtoken": "^9.0.3",
+    "ws": "1.1.5"
   },
   "devDependencies": {
     "@types/node": "20.0.0"
   }
 }
-

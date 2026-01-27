@@ -11,15 +11,15 @@
 
 .session-list-header h3 {
     font-size: 1rem;
-    color: #fff;
+    color: var(--text-primary);
 }
 
 .session-count {
-    background: #3a3a3a;
+    background: var(--bg-hover);
     padding: 0.25rem 0.5rem;
     border-radius: 12px;
     font-size: 0.75rem;
-    color: #aaa;
+    color: var(--text-secondary);
 }
 
 .session-items {
@@ -31,13 +31,13 @@
 .no-sessions {
     padding: 2rem;
     text-align: center;
-    color: #666;
+    color: var(--text-tertiary);
     font-size: 0.9rem;
 }
 
 .session-item {
     padding: 0.75rem;
-    background: #2a2a2a;
+    background: var(--bg-secondary);
     border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
@@ -45,13 +45,13 @@
 }
 
 .session-item:hover {
-    background: #333;
-    border-color: #444;
+    background: var(--bg-hover);
+    border-color: var(--border-hover);
 }
 
 .session-item.selected {
-    background: #1a3a2a;
-    border-color: #4caf50;
+    background: var(--bg-active);
+    border-color: var(--accent-color);
 }
 
 .session-header {
@@ -67,9 +67,24 @@
     border-radius: 50%;
 }
 
+.session-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.device-icon {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
 .session-device-id {
     font-weight: 600;
-    color: #fff;
+    color: var(--text-primary);
     font-size: 0.9rem;
     word-break: break-all;
 }
@@ -82,7 +97,7 @@
 
 .session-id {
     font-size: 0.75rem;
-    color: #888;
+    color: var(--text-muted);
     font-family: monospace;
 }
 
@@ -90,13 +105,13 @@
     display: flex;
     justify-content: space-between;
     font-size: 0.75rem;
-    color: #666;
+    color: var(--text-tertiary);
 }
 
 .error-count {
-    color: #f44336;
+    color: var(--error-color);
 }
 
 .session-time {
-    color: #888;
+    color: var(--text-muted);
 }

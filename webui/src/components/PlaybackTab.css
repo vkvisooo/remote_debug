@@ -4,7 +4,7 @@
 }
 
 .playback-empty-message {
-    color: #666;
+    color: var(--text-tertiary);
     font-size: 0.85rem;
     font-style: italic;
     padding: 1rem 0;
@@ -27,15 +27,15 @@
     font-weight: 600;
     margin: 0 0 0.75rem 0;
     padding-bottom: 0.5rem;
-    border-bottom: 1px solid #3a3a3a;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .playback-device-column .playback-column-title {
-    color: #2196f3;
+    color: var(--accent-color);
 }
 
 .playback-player-column .playback-column-title {
-    color: #4caf50;
+    color: var(--accent-color);
 }
 
 .playback-details-list {
@@ -48,7 +48,7 @@
     display: flex;
     gap: 0.25rem;
     padding: 0.5rem 0;
-    border-bottom: 1px solid #2a2a2a;
+    border-bottom: 1px solid var(--border-color);
     justify-content: space-between;
     align-items: center;
 }
@@ -60,7 +60,7 @@
 .playback-detail-label {
     font-size: 0.75rem;
     font-weight: 500;
-    color: #666;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.3px;
     display: flex;
@@ -69,14 +69,15 @@
 
 .playback-detail-value {
     font-size: 0.9rem;
-    color: #ccc;
+    color: var(--text-secondary);
     word-break: break-word;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     padding: 0.25rem 0;
 }
+
 .playback-detail-label-value {
     font-weight: 500;
-    color: #666;
+    color: var(--text-tertiary);
 }
 
 /* Responsive design for smaller screens */

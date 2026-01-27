@@ -10,22 +10,18 @@ import cors from 'cors';
 import { 
   SESSION_CONFIG, 
   WS_CONFIG, 
-  MESSAGE_TYPES, 
   SERVER_CONFIG, 
-  API_ROUTES,
-  HTTP_STATUS 
+  API_ROUTES
 } from './constants.js';
-import { parseWebSocketUrl, formatSessionForAPI, broadcastToWebUI } from './utils.js';
+import { authenticate, authenticateUser, generateToken } from './auth.js';
+import { setupWebSocketHandler } from './websocket.js';
 import {
-  handleWebUIConnection,
-  handleWebUICommand,
-  closeExistingConnection,
-  createOrReuseSession,
-  notifySessionReady,
-  notifyWebUIOfSession,
-  handleDeviceMessage,
-  handleDeviceDisconnect
-} from './helpers.js';
+  handleGetSessions,
+  handleGetSessionById,
+  handleGetDeviceDetails,
+  handleDeleteSession,
+  handleHealthCheck
+} from './routes.js';
 
 const app = express();
 
@@ -41,6 +37,34 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Authentication endpoint (must be before auth middleware)
+app.post(API_ROUTES.AUTH_LOGIN, (req, res) => {
+  const { userName, password } = req.body;
+
+  if (!userName || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  const result = authenticateUser(userName, password);
+
+  if (!result.success) {
+    return res.status(401).json({ error: result.error });
+  }
+
+  const token = generateToken(result.user.userName);
+
+  res.json({
+    success: true,
+    token,
+    user: {
+      userName: result.user.userName
+    }
+  });
+});
+
+// Authentication middleware (applied to all routes except login and health)
+app.use(authenticate);
+
 const server = createServer(app);
 const wss = new ws.Server({ server });
 
@@ -50,135 +74,18 @@ const deviceConnections = new Map(); // deviceId -> WebSocket
 const webUIConnections = new Set(); // Set of WebSocket connections from Web UI
 const webUISessionMap = new Map(); // sessionId -> WebSocket (to track and close old connections)
 
-/**
- * Handle WebSocket connection
- */
-wss.on('connection', (ws, req) => {
-  try {
-    // In ws v1.1.5, req might not be passed, try ws.upgradeReq as fallback
-    const request = req || ws.upgradeReq;
-    
-    if (!request || !request.url) {
-      console.warn('[Server] WebSocket connection without valid request object');
-      ws.close(WS_CONFIG.CLOSE_CODES.INVALID_CONNECTION, WS_CONFIG.CLOSE_REASONS.INVALID_CONNECTION);
-      return;
-    }
-    
-    const { clientType, deviceId, sessionId } = parseWebSocketUrl(request);
+// Heartbeat rate limiting: track heartbeats per deviceId
+const heartbeatRateLimiter = new Map(); // deviceId -> Array of timestamps
 
-    if (clientType === WS_CONFIG.CLIENT_TYPES.WEBUI) {
-      handleWebUIConnection(ws, sessions, webUIConnections, deviceConnections, sessionId, webUISessionMap);
-      return;
-    }
+// Setup WebSocket handler
+setupWebSocketHandler(wss, sessions, deviceConnections, webUIConnections, webUISessionMap, heartbeatRateLimiter);
 
-    // Device (Agent) connection
-    if (!deviceId) {
-      ws.close(WS_CONFIG.CLOSE_CODES.DEVICE_ID_REQUIRED, WS_CONFIG.CLOSE_REASONS.DEVICE_ID_REQUIRED);
-      return;
-    }
-
-    // Check for existing connection BEFORE closing
-    const existingConnection = deviceConnections.get(deviceId);
-    if (existingConnection) {
-      // console.error(`[Server] Device ${deviceId} attempting to create new connection while existing connection is active (state: ${existingConnection.readyState})`);
-    }
-
-    // Enforce single connection per device
-    closeExistingConnection(deviceId, deviceConnections);
-
-    // Double-check: if connection still exists after close, wait a bit and check again
-    const stillExists = deviceConnections.get(deviceId);
-    if (stillExists && stillExists !== ws) {
-      // Force remove it
-      deviceConnections.delete(deviceId);
-    }
-
-    // Create or reuse session
-    const { session, isNewSession } = createOrReuseSession(deviceId, sessions, deviceConnections);
-    deviceConnections.set(deviceId, ws);
-
-    // Notify device that session is ready
-    notifySessionReady(ws, deviceId);
-
-    // Notify WebUI of session
-    notifyWebUIOfSession(session, isNewSession, webUIConnections);
-
-    // Handle messages from device
-    ws.on('message', (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-        handleDeviceMessage(ws, message, sessions, webUIConnections);
-      } catch (error) {
-        console.error('[Server] Error handling device message:', error);
-      }
-    });
-
-    // Handle device disconnect
-    ws.on('close', () => {
-      handleDeviceDisconnect(deviceId, ws, sessions, deviceConnections, webUIConnections);
-    });
-
-    ws.on('error', (error) => {
-      console.error(`[Server] WebSocket error for device ${deviceId}:`, error);
-    });
-  } catch (error) {
-    console.error('[Server] Error parsing WebSocket URL:', error);
-    ws.close(WS_CONFIG.CLOSE_CODES.INVALID_CONNECTION, WS_CONFIG.CLOSE_REASONS.INVALID_URL);
-  }
-});
-
-// REST API endpoints
-app.get(API_ROUTES.SESSIONS, (req, res) => {
-  const sessionList = Array.from(sessions.values()).map(formatSessionForAPI);
-  res.json(sessionList);
-});
-
-app.get(API_ROUTES.SESSION_BY_ID, (req, res) => {
-  const session = sessions.get(req.params.deviceId);
-  if (!session) {
-    return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Session not found' });
-  }
-  res.json({
-    deviceId: session.deviceId,
-    status: session.status,
-    timestamp: session.timestamp,
-    events: session.events,
-    metrics: session.metrics
-  });
-});
-
-app.delete(API_ROUTES.SESSION_BY_ID, (req, res) => {
-  const session = sessions.get(req.params.deviceId);
-  if (!session) {
-    return res.status(HTTP_STATUS.NOT_FOUND).json({ error: 'Session not found' });
-  }
-
-  const ws = deviceConnections.get(session.deviceId);
-  if (ws && ws.readyState === WS_CONFIG.READY_STATE.OPEN) {
-    ws.close();
-  }
-
-  sessions.delete(req.params.deviceId);
-  deviceConnections.delete(session.deviceId);
-
-  broadcastToWebUI(webUIConnections, {
-    type: MESSAGE_TYPES.SESSION_DELETED,
-    payload: { deviceId: req.params.deviceId }
-  });
-
-  res.json({ success: true });
-});
-
-// Health check
-app.get(API_ROUTES.HEALTH, (req, res) => {
-  res.json({
-    status: 'ok',
-    activeSessions: sessions.size,
-    maxSessions: SESSION_CONFIG.MAX_SESSIONS,
-    connectedDevices: deviceConnections.size,
-    webUIConnections: webUIConnections.size
-  });
-});
+// REST API endpoints (protected)
+app.get(API_ROUTES.SESSIONS, handleGetSessions(sessions));
+app.get(API_ROUTES.SESSION_BY_ID, handleGetSessionById(sessions));
+app.get(API_ROUTES.DEVICE_DETAILS, handleGetDeviceDetails(sessions));
+app.delete(API_ROUTES.SESSION_BY_ID, handleDeleteSession(sessions, deviceConnections, webUIConnections));
+app.get(API_ROUTES.HEALTH, handleHealthCheck(sessions, deviceConnections, webUIConnections));
 
 const PORT = process.env.PORT || SERVER_CONFIG.DEFAULT_PORT;
 const HOST = process.env.HOST || SERVER_CONFIG.DEFAULT_HOST;

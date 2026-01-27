@@ -10,33 +10,7 @@ import { broadcastToWebUI, enforceMaxSessions, formatSessionForWebUI } from './u
  * Handle WebUI connection
  */
 export function handleWebUIConnection(ws, sessions, webUIConnections, deviceConnections, sessionId, webUISessionMap) {
-  // If sessionId is provided, close any existing connection with the same sessionId
-  if (sessionId) {
-    const existingWs = webUISessionMap.get(sessionId);
-    if (existingWs && existingWs !== ws) {
-      // Check if the existing connection is still open
-      const existingState = existingWs.readyState;
-      if (existingState === WS_CONFIG.READY_STATE.OPEN || 
-          existingState === WS_CONFIG.READY_STATE.CONNECTING) {
-        // console.warn(`[Server] Closing existing WebUI connection for session: ${sessionId} (state: ${existingState})`);
-        try {
-          existingWs.close(WS_CONFIG.CLOSE_CODES.INVALID_CONNECTION, 'New connection from same session');
-        } catch (error) {
-          console.error(`[Server] Error closing existing WebUI connection:`, error);
-        }
-        webUIConnections.delete(existingWs);
-      } else {
-        // console.log(`[Server] Existing WebUI connection for session ${sessionId} is already closed (state: ${existingState}), removing from map`);
-      }
-      webUISessionMap.delete(sessionId);
-    } else if (existingWs === ws) {
-      // console.log(`[Server] WebUI connection for session ${sessionId} is the same as existing, no action needed`);
-    }
-    // Map the new connection to the sessionId
-    webUISessionMap.set(sessionId, ws);
-  }
-  
-  // Remove any closed/stale connections from the set
+  // First, clean up any closed/stale connections from the set
   const closedConnections = [];
   webUIConnections.forEach(conn => {
     if (conn.readyState === WS_CONFIG.READY_STATE.CLOSED || 
@@ -53,8 +27,52 @@ export function handleWebUIConnection(ws, sessions, webUIConnections, deviceConn
       }
     });
   });
+
+  // If sessionId is provided, close any existing connection with the same sessionId
+  if (sessionId) {
+    const existingWs = webUISessionMap.get(sessionId);
+    if (existingWs && existingWs !== ws) {
+      // Check if the existing connection is still open
+      const existingState = existingWs.readyState;
+      if (existingState === WS_CONFIG.READY_STATE.OPEN || 
+          existingState === WS_CONFIG.READY_STATE.CONNECTING) {
+        console.log(`[Server] Closing existing WebUI connection for session: ${sessionId} (state: ${existingState})`);
+        try {
+          existingWs.close(WS_CONFIG.CLOSE_CODES.INVALID_CONNECTION, 'New connection from same session');
+        } catch (error) {
+          console.error(`[Server] Error closing existing WebUI connection:`, error);
+        }
+        // Remove from connections set immediately
+        webUIConnections.delete(existingWs);
+      } else {
+        console.log(`[Server] Existing WebUI connection for session ${sessionId} is already closed (state: ${existingState}), removing from map`);
+        // Remove from connections set if it's still there
+        webUIConnections.delete(existingWs);
+      }
+      // Remove from session map
+      webUISessionMap.delete(sessionId);
+    } else if (existingWs === ws) {
+      console.log(`[Server] WebUI connection for session ${sessionId} is the same as existing, no action needed`);
+      // Connection already exists and is mapped, but we still need to set up handlers
+      // Don't add to set again, but continue to set up handlers below
+    } else {
+      // Map the new connection to the sessionId
+      webUISessionMap.set(sessionId, ws);
+    }
+  } else {
+    // No sessionId provided - check if this exact connection already exists
+    if (webUIConnections.has(ws)) {
+      console.log(`[Server] WebUI connection already exists in set, skipping duplicate`);
+      // Still need to set up handlers, so don't return
+    }
+  }
   
-  webUIConnections.add(ws);  
+  // Add the new connection (only if not already in set)
+  if (!webUIConnections.has(ws)) {
+    webUIConnections.add(ws);
+  }
+  
+  // Warn if multiple connections exist (could be legitimate if multiple browser tabs/windows)
   if (webUIConnections.size > 1) {
     console.warn(`[Server] WARNING: ${webUIConnections.size} WebUI connections active! This may cause duplicate events.`);
   }
@@ -83,7 +101,6 @@ export function handleWebUIConnection(ws, sessions, webUIConnections, deviceConn
         webUISessionMap.delete(sessionId);
       }
     }
-    // console.error(`[Server] Web UI disconnected${sessionId ? ` (session: ${sessionId})` : ''}. Total: ${webUIConnections.size}`);
   });
 }
 
@@ -144,17 +161,20 @@ export function closeExistingConnection(deviceId, deviceConnections) {
 /**
  * Create or reuse session for device
  */
-export function createOrReuseSession(deviceId, sessions, deviceConnections) {
+export function createOrReuseSession(deviceId, sessions, deviceConnections, deviceName = null, modelName = null) {
   let session = sessions.get(deviceId);
   let isNewSession = false;
   
   if (session) {
-    // Reuse existing session
+    // Reuse existing session - update device info if provided
     session.status = SESSION_CONFIG.STATUS.ACTIVE;
+    if (deviceName || modelName) {
+      session.updateDeviceInfo(deviceName, modelName, null);
+    }
   } else {
     // Create new session
     enforceMaxSessions(sessions, deviceConnections, SESSION_CONFIG.MAX_SESSIONS);
-    session = new Session(deviceId);
+    session = new Session(deviceId, deviceName, modelName);
     sessions.set(deviceId, session);
     isNewSession = true;
   }
@@ -177,11 +197,13 @@ export function notifySessionReady(ws, deviceId) {
  */
 export function notifyWebUIOfSession(session, isNewSession, webUIConnections) {
   const messageType = isNewSession ? MESSAGE_TYPES.SESSION_CREATED : MESSAGE_TYPES.SESSION_UPDATED;
-  
   broadcastToWebUI(webUIConnections, {
     type: messageType,
     payload: {
       deviceId: session.deviceId,
+      deviceName: session.deviceName,
+      modelName: session.modelName,
+      drmSupport: session.drmSupport,
       status: session.status,
       timestamp: session.timestamp
     }
@@ -189,12 +211,14 @@ export function notifyWebUIOfSession(session, isNewSession, webUIConnections) {
 }
 
 /**
- * Handle messages from device
+ * Handle messages from device (agent)
+ * NOTE: No authentication required - agents are guest users
+ * Agents can send events, responses, and heartbeats without tokens
  */
-export function handleDeviceMessage(ws, message, sessions, webUIConnections) {
+export function handleDeviceMessage(ws, message, sessions, webUIConnections, heartbeatRateLimiter) {
   const session = sessions.get(message.deviceId);
-
   if (!session) {
+    console.warn(`[Server] Message from device ${message.deviceId} but no session found`);
     return;
   }
 
@@ -208,7 +232,11 @@ export function handleDeviceMessage(ws, message, sessions, webUIConnections) {
       break;
       
     case MESSAGE_TYPES.HEARTBEAT:
-      handleDeviceHeartbeat(ws, message);
+      handleDeviceHeartbeat(ws, message, heartbeatRateLimiter);
+      break;
+      
+    case MESSAGE_TYPES.DEVICE_INFO:
+      handleDeviceInfo(session, message, webUIConnections);
       break;
       
     default:
@@ -243,23 +271,71 @@ function handleDeviceResponse(session, message, webUIConnections) {
 }
 
 /**
- * Handle heartbeat from device
+ * Handle device info from device
+ * Device info is stored but not broadcast via WebSocket
+ * WebUI should fetch it via REST API when needed
  */
-function handleDeviceHeartbeat(ws, message) {
+function handleDeviceInfo(session, message, webUIConnections) {
+  const { deviceName, modelName, drmSupport } = message.payload || {};
+  if (deviceName || modelName || drmSupport) {
+    session.updateDeviceInfo(deviceName, modelName, drmSupport);
+  }
+}
+
+// Constants for heartbeat rate limiting
+const HEARTBEAT_MAX_PER_SECOND = 20;
+const HEARTBEAT_WINDOW_MS = 1000; // 1 second
+
+/**
+ * Handle heartbeat from device with rate limiting
+ */
+function handleDeviceHeartbeat(ws, message, heartbeatRateLimiter) {
+  const deviceId = message.deviceId;
+  const now = Date.now();
+  
+  // Get or create heartbeat timestamps array for this device
+  if (!heartbeatRateLimiter.has(deviceId)) {
+    heartbeatRateLimiter.set(deviceId, []);
+  }
+  
+  const timestamps = heartbeatRateLimiter.get(deviceId);
+  
+  // Remove timestamps older than 1 second
+  const cutoff = now - HEARTBEAT_WINDOW_MS;
+  while (timestamps.length > 0 && timestamps[0] < cutoff) {
+    timestamps.shift();
+  }
+  
+  // Check if rate limit exceeded
+  if (timestamps.length >= HEARTBEAT_MAX_PER_SECOND) {
+    // Rate limit exceeded, ignore this heartbeat
+    console.warn(`[Server] Heartbeat rate limit exceeded for device ${deviceId}: ${timestamps.length} heartbeats in last second`);
+    return;
+  }
+  
+  // Add current timestamp
+  timestamps.push(now);
+  
+  // Send heartbeat response
   ws.send(JSON.stringify({
     type: MESSAGE_TYPES.HEARTBEAT,
-    deviceId: message.deviceId
+    deviceId: deviceId
   }));
 }
 
 /**
  * Handle device disconnect
  */
-export function handleDeviceDisconnect(deviceId, ws, sessions, deviceConnections, webUIConnections) {
+export function handleDeviceDisconnect(deviceId, ws, sessions, deviceConnections, webUIConnections, heartbeatRateLimiter) {
 
   const currentConnection = deviceConnections.get(deviceId);
   if (currentConnection === ws) {
     deviceConnections.delete(deviceId);
+  }
+  
+  // Clean up heartbeat rate limiter for this device
+  if (heartbeatRateLimiter) {
+    heartbeatRateLimiter.delete(deviceId);
   }
   
   const session = sessions.get(deviceId);
