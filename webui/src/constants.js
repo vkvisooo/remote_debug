@@ -60,6 +60,5 @@ export const TAB_IDS = {
 // Default Values
 export const DEFAULTS = {
   ACTIVE_TAB: TAB_IDS.NETWORK,
-  // SERVER_URL: "wss://ws.apni-duniya.com",
-  SERVER_URL: 'ws://localhost:3001'
+  SERVER_URL: process.env.API_URL || "ws://localhost:3001",
 };
