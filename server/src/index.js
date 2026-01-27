@@ -123,13 +123,11 @@ app.use((req, res, next) => {
       req.originalUrl || req.path
     }`
   );
-  res
-    .status(404)
-    .json({
-      error: "Route not found",
-      path: req.originalUrl || req.path,
-      method: req.method,
-    });
+  res.status(404).json({
+    error: "Route not found",
+    path: req.originalUrl || req.path,
+    method: req.method,
+  });
 });
 
 const PORT = process.env.PORT || SERVER_CONFIG.DEFAULT_PORT;
@@ -204,5 +202,8 @@ server.listen(PORT, HOST, () => {
           : "NONE (set ALLOWED_ORIGINS env var)"
       }`
     );
+  }
+  if (NODE_ENV === "development") {
+    console.error(`[Server] CORS allowed origins: ALL (development mode)`, 1);
   }
 });
