@@ -39,6 +39,7 @@ app.use(express.json());
 
 // Authentication endpoint (must be before auth middleware)
 app.post(API_ROUTES.AUTH_LOGIN, (req, res) => {
+  console.error(`[Server] Login request received - path: ${req.path}, originalUrl: ${req.originalUrl}, method: ${req.method}`);
   const { userName, password } = req.body;
 
   if (!userName || !password) {
@@ -48,10 +49,12 @@ app.post(API_ROUTES.AUTH_LOGIN, (req, res) => {
   const result = authenticateUser(userName, password);
 
   if (!result.success) {
+    console.error(`[Server] Login failed for user: ${userName}`);
     return res.status(401).json({ error: result.error });
   }
 
   const token = generateToken(result.user.userName);
+  console.error(`[Server] Login successful for user: ${userName}`);
 
   res.json({
     success: true,
@@ -86,6 +89,12 @@ app.get(API_ROUTES.SESSION_BY_ID, handleGetSessionById(sessions));
 app.get(API_ROUTES.DEVICE_DETAILS, handleGetDeviceDetails(sessions));
 app.delete(API_ROUTES.SESSION_BY_ID, handleDeleteSession(sessions, deviceConnections, webUIConnections));
 app.get(API_ROUTES.HEALTH, handleHealthCheck(sessions, deviceConnections, webUIConnections));
+
+// 404 handler for debugging
+app.use((req, res, next) => {
+  console.error(`[Server] 404 - Route not found: ${req.method} ${req.originalUrl || req.path}`);
+  res.status(404).json({ error: 'Route not found', path: req.originalUrl || req.path, method: req.method });
+});
 
 const PORT = process.env.PORT || SERVER_CONFIG.DEFAULT_PORT;
 const HOST = process.env.HOST || SERVER_CONFIG.DEFAULT_HOST;
