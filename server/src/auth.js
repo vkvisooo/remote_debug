@@ -21,7 +21,15 @@ const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "2h";
  * Generate JWT token for user
  */
 export function generateToken(userName) {
-  return jwt.sign({ userName }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  try {
+    return jwt.sign({ userName }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  } catch (error) {
+    console.error(
+      `[Server] Error generating token for user: ${userName}`,
+      error
+    );
+    return null;
+  }
 }
 
 /**
@@ -57,14 +65,15 @@ export function authenticateUser(userName, password) {
  */
 export function authenticate(req, res, next) {
   // Skip authentication only for login endpoint and health check
-  console.log(
-    `[Auth] Authenticating request - path: ${req.path}, method: ${req.method}`
+  // Use originalUrl to handle reverse proxy scenarios and base paths
+  // Remove query string for path matching
+  const path = (req.originalUrl || req.path).split("?")[0];
+  console.error(
+    `[Server] Auth middleware - method: ${req.method}, path: ${req.path}, originalUrl: ${req.originalUrl}, matched path: ${path}`
   );
-  if (
-    req.path === "/api/auth/login" ||
-    req.path.includes("/api/auth/login") ||
-    req.path === "/health"
-  ) {
+
+  if (path === "/api/auth/login" || path === "/health") {
+    console.error(`[Server] Auth middleware - skipping auth for: ${path}`);
     return next();
   }
 
