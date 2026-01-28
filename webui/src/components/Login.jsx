@@ -1,20 +1,12 @@
 import React, { useState } from 'react';
 import { useTheme } from '../ThemeContext';
 import './Login.css';
+import { DEFAULTS } from '../constants';
+import { getApiUrl } from '../api';
 
-// Convert WebSocket URL to HTTP URL for API calls
-const getApiUrl = () => {
-    const wsUrl = import.meta.env.VITE_SERVER_URL || 'ws://localhost:3001';
-    // Convert ws:// to http:// or wss:// to https://
-    if (wsUrl.startsWith('ws://')) {
-        return wsUrl.replace('ws://', 'http://');
-    } else if (wsUrl.startsWith('wss://')) {
-        return wsUrl.replace('wss://', 'https://');
-    }
-    return wsUrl; // Already HTTP or fallback
-};
-
-const API_URL = getApiUrl();
+// Use the same server URL configuration as App.jsx
+const SERVER_URL = DEFAULTS.SERVER_URL;
+const API_URL = getApiUrl(SERVER_URL);
 
 function Login({ onLogin }) {
     const { theme, toggleTheme } = useTheme();
@@ -37,13 +29,13 @@ function Login({ onLogin }) {
                 body: JSON.stringify({ userName, password }),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
                 setError(data.error || 'Login failed');
                 setLoading(false);
                 return;
             }
+
+            const data = await response.json();
 
             if (data.success && data.token) {
                 // Store token in localStorage
